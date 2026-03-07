@@ -15,11 +15,15 @@
       "Bash(cd:*)",
       "Bash(head:*)",
       "Bash(ls:*)",
-      "Bash(code:*)"
+      "Bash(code:*)",
+      "mcp__supabase-distribuidora__get_project_url",
+      "Bash(curl:*)",
+      "Bash(npx tsc:*)",
+      "Bash(xargs wc:*)"
     ]
   },
+  "enableAllProjectMcpServers": true,
   "enabledMcpjsonServers": [
     "supabase-distribuidora"
-  ],
-  "enableAllProjectMcpServers": true
+  ]
 }

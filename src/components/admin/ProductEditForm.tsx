@@ -2,42 +2,28 @@
 'use client'
 
 import { useState } from 'react'
-import { X, Save } from 'lucide-react'
-
-interface Product {
-    id: string
-    nome: string
-    preco: number
-    ativo: boolean
-    visivel_catalogo: boolean
-    categoria: string | null
-    descricao: string | null
-    peso_kg: number | null
-    subtitulo: string | null
-    destaque: boolean
-    slug: string | null
-    instrucoes_preparo: string | null
-    anchor_price_cents?: number | null
-    preco_ancoragem?: number | null
-}
+import { X, Save, Trash2 } from 'lucide-react'
+import Image from 'next/image'
+import type { AdminProduct } from '@/types/product'
 
 interface ProductEditFormProps {
-    product: Product
+    product: AdminProduct
     onClose: () => void
-    onSave: (id: string, data: Partial<Product>) => Promise<void>
+    onSave: (id: string, data: Partial<AdminProduct>) => Promise<void>
+    onImageDeleted?: (id: string) => void
 }
 
-export default function ProductEditForm({ product, onClose, onSave }: ProductEditFormProps) {
+export default function ProductEditForm({ product, onClose, onSave, onImageDeleted }: ProductEditFormProps) {
     const [formData, setFormData] = useState({
         descricao: product.descricao || '',
-        categoria: product.categoria || '',
         peso_kg: product.peso_kg || 0,
-        subtitulo: product.subtitulo || '',
         destaque: product.destaque || false,
         slug: product.slug || '',
         instrucoes_preparo: product.instrucoes_preparo || ''
     })
     const [loading, setLoading] = useState(false)
+    const [imageUrl, setImageUrl] = useState(product.sis_imagens_produto?.[0]?.url || null)
+    const [deletingImage, setDeletingImage] = useState(false)
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
@@ -98,6 +84,57 @@ export default function ProductEditForm({ product, onClose, onSave }: ProductEdi
                         </div>
                     </div>
 
+                    {/* Imagem do Produto */}
+                    <div>
+                        <label className="block text-sm font-medium text-mont-espresso mb-1">
+                            Imagem do Produto
+                        </label>
+                        {imageUrl ? (
+                            <div className="relative inline-block">
+                                <Image
+                                    src={imageUrl}
+                                    alt={product.nome}
+                                    width={80}
+                                    height={80}
+                                    className="w-20 h-20 object-cover rounded-lg border border-gray-200"
+                                />
+                                <button
+                                    type="button"
+                                    disabled={deletingImage}
+                                    onClick={async () => {
+                                        if (!confirm('Remover imagem do produto?')) return
+                                        setDeletingImage(true)
+                                        try {
+                                            const res = await fetch(`/api/admin/produtos/${product.id}/imagem`, {
+                                                method: 'DELETE',
+                                                headers: { 'Content-Type': 'application/json' },
+                                                body: JSON.stringify({ imageUrl })
+                                            })
+                                            if (res.ok) {
+                                                setImageUrl(null)
+                                                onImageDeleted?.(product.id)
+                                            } else {
+                                                const data = await res.json()
+                                                alert(data.error || 'Erro ao remover imagem')
+                                            }
+                                        } catch (err) {
+                                            console.error('[DeleteImage] Erro:', err)
+                                            alert('Erro ao remover imagem')
+                                        } finally {
+                                            setDeletingImage(false)
+                                        }
+                                    }}
+                                    className="absolute -top-2 -right-2 bg-red-500 hover:bg-red-600 text-white rounded-full w-6 h-6 flex items-center justify-center shadow-md disabled:opacity-50"
+                                    title="Remover imagem"
+                                >
+                                    <Trash2 size={12} />
+                                </button>
+                            </div>
+                        ) : (
+                            <p className="text-xs text-gray-400 italic">Sem imagem. Faça upload pelo sistema interno.</p>
+                        )}
+                    </div>
+
                     <div>
                         <label className="block text-sm font-medium text-mont-espresso mb-1">
                             Descrição
@@ -116,16 +153,16 @@ export default function ProductEditForm({ product, onClose, onSave }: ProductEdi
                             <label className="block text-sm font-medium text-mont-espresso mb-1">
                                 Categoria (Filtro)
                             </label>
-                            <select
-                                value={formData.categoria}
-                                onChange={e => setFormData({ ...formData, categoria: e.target.value })}
-                                className="w-full p-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-mont-gold text-sm"
-                            >
-                                <option value="">Selecione uma categoria...</option>
-                                <option value="congelado">Congelado</option>
-                                <option value="refrigerado">Refrigerado</option>
-                                <option value="combo">Combo</option>
-                            </select>
+                            <div className="px-3 py-2 bg-gray-50 border border-gray-200 rounded-md text-mont-gray text-sm min-h-[38px] capitalize">
+                                {product.categoria || (
+                                    <span className="italic text-gray-400">
+                                        Não definida — edite pelo sistema interno
+                                    </span>
+                                )}
+                            </div>
+                            <p className="text-xs text-gray-400 mt-1">
+                                Editável apenas pelo sistema interno Mont
+                            </p>
                         </div>
                         <div>
                             <label className="block text-sm font-medium text-mont-espresso mb-1">
@@ -143,15 +180,18 @@ export default function ProductEditForm({ product, onClose, onSave }: ProductEdi
 
                     <div>
                         <label className="block text-sm font-medium text-mont-espresso mb-1">
-                            Subtítulo do Card
+                            Variação / Subtítulo do Card
                         </label>
-                        <input
-                            type="text"
-                            value={formData.subtitulo || ''}
-                            onChange={e => setFormData({ ...formData, subtitulo: e.target.value })}
-                            placeholder="Ex: Unidades de 20g"
-                            className="w-full p-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-mont-gold text-sm"
-                        />
+                        <div className="px-3 py-2 bg-gray-50 border border-gray-200 rounded-md text-mont-gray text-sm min-h-[38px]">
+                            {product.subtitulo || (
+                                <span className="italic text-gray-400">
+                                    Não definido — edite pelo sistema interno
+                                </span>
+                            )}
+                        </div>
+                        <p className="text-xs text-gray-400 mt-1">
+                            Editável apenas pelo sistema interno Mont
+                        </p>
                     </div>
 
                     <div>

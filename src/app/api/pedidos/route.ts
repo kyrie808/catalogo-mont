@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { createClient } from '@supabase/supabase-js'
 
-// Validação do payload
+// Validação do payload — preços NÃO vêm do cliente
 const orderSchema = z.object({
     customer_name: z.string().min(3),
     customer_phone: z.string().min(10),
@@ -11,13 +11,9 @@ const orderSchema = z.object({
     payment_method: z.enum(['pix', 'dinheiro']),
     items: z.array(z.object({
         product_id: z.string().uuid(),
-        product_name: z.string(),
         quantity: z.number().int().positive(),
-        unit_price_cents: z.number().int().positive(),
     })).min(1),
-    subtotal_cents: z.number().int(),
-    delivery_fee_cents: z.number().int(),
-    total_cents: z.number().int(),
+    delivery_fee_cents: z.number().int().nonnegative().optional(),
     referred_by: z.string().optional(),
     notes: z.string().optional(),
 })
@@ -40,6 +36,59 @@ export async function POST(request: Request) {
             }
         })
 
+        // --- VERIFICAÇÃO DE PREÇOS SERVER-SIDE ---
+        const productIds = validatedData.items.map(i => i.product_id)
+
+        const { data: produtos, error: produtosError } = await supabase
+            .from('produtos')
+            .select('id, nome, preco, ativo, visivel_catalogo')
+            .in('id', productIds)
+
+        if (produtosError || !produtos) {
+            return NextResponse.json(
+                { error: 'Erro ao verificar produtos' },
+                { status: 500 }
+            )
+        }
+
+        // Validar: todos os produtos existem, estão ativos e visíveis
+        const produtoMap = new Map(produtos.map(p => [p.id, p]))
+
+        for (const item of validatedData.items) {
+            const produto = produtoMap.get(item.product_id)
+            if (!produto) {
+                return NextResponse.json(
+                    { error: `Produto indisponível: ${item.product_id}` },
+                    { status: 400 }
+                )
+            }
+            if (!produto.ativo || !produto.visivel_catalogo) {
+                return NextResponse.json(
+                    { error: `Produto indisponível: ${produto.nome}` },
+                    { status: 400 }
+                )
+            }
+        }
+
+        // Recalcular preços a partir do banco
+        const itemsComPreco = validatedData.items.map(item => {
+            const produto = produtoMap.get(item.product_id)!
+            const unit_price_cents = Math.round(Number(produto.preco) * 100)
+            return {
+                product_id: item.product_id,
+                product_name: produto.nome,
+                quantity: item.quantity,
+                unit_price_cents,
+                total_centavos: unit_price_cents * item.quantity,
+            }
+        })
+
+        const subtotal_cents = itemsComPreco.reduce(
+            (acc, i) => acc + i.total_centavos, 0
+        )
+        const delivery_fee_cents = validatedData.delivery_fee_cents ?? 0
+        const total_cents = subtotal_cents + delivery_fee_cents
+
         // Tenta inserir pedido (Tabelas Reais)
         try {
             console.log('Iniciando inserção do pedido no banco de dados...')
@@ -52,9 +101,9 @@ export async function POST(request: Request) {
                     telefone_cliente: validatedData.customer_phone,
                     endereco_entrega: validatedData.customer_address || null,
                     metodo_entrega: validatedData.delivery_method,
-                    subtotal_centavos: validatedData.subtotal_cents,
-                    frete_centavos: validatedData.delivery_fee_cents,
-                    total_centavos: validatedData.total_cents,
+                    subtotal_centavos: subtotal_cents,
+                    frete_centavos: delivery_fee_cents,
+                    total_centavos: total_cents,
                     metodo_pagamento: validatedData.payment_method,
                     observacoes: validatedData.notes || null,
                     indicado_por: validatedData.referred_by || null,
@@ -72,13 +121,13 @@ export async function POST(request: Request) {
             console.log('Pedido criado com sucesso:', pedido.id)
 
             // 2. Inserir em cat_itens_pedido
-            const itensPedido = validatedData.items.map(item => ({
+            const itensPedido = itemsComPreco.map(item => ({
                 pedido_id: pedido.id,
                 produto_id: item.product_id,
                 nome_produto: item.product_name,
                 quantidade: item.quantity,
                 preco_unitario_centavos: item.unit_price_cents,
-                total_centavos: item.unit_price_cents * item.quantity,
+                total_centavos: item.total_centavos,
             }))
 
             const { error: itensError } = await supabase
@@ -131,11 +180,11 @@ export async function POST(request: Request) {
                     .insert({
                         origem: 'catalogo',
                         status: 'pendente',
-                        total: validatedData.total_cents / 100,
+                        total: total_cents / 100,
                         forma_pagamento: validatedData.payment_method,
                         pago: false,
                         valor_pago: 0,
-                        taxa_entrega: validatedData.delivery_fee_cents / 100,
+                        taxa_entrega: delivery_fee_cents / 100,
                         observacoes: validatedData.notes || null,
                         cat_pedido_id: pedido.id,
                         data: new Date().toISOString().split('T')[0],

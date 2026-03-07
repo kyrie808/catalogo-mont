@@ -5,6 +5,8 @@ import { cookies } from 'next/headers'
 import { createServerClient } from '@supabase/ssr'
 import { z } from 'zod'
 
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
 const updateStatusSchema = z.object({
     status: z.enum(['pendente', 'confirmado', 'preparando', 'enviado', 'entregue', 'cancelado']).optional(),
     status_pagamento: z.enum(['pendente', 'pago', 'parcial']).optional(),
@@ -16,6 +18,13 @@ export async function PATCH(
     request: Request,
     { params }: { params: { id: string } }
 ) {
+    if (!UUID_REGEX.test(params.id)) {
+        return NextResponse.json(
+            { error: 'ID inválido' },
+            { status: 400 }
+        )
+    }
+
     const cookieStore = cookies()
 
     const authSupabase = createServerClient(
@@ -163,6 +172,13 @@ export async function DELETE(
     request: Request,
     { params }: { params: { id: string } }
 ) {
+    if (!UUID_REGEX.test(params.id)) {
+        return NextResponse.json(
+            { error: 'ID inválido' },
+            { status: 400 }
+        )
+    }
+
     const cookieStore = cookies()
 
     const authSupabase = createServerClient(

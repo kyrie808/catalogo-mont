@@ -4,29 +4,12 @@
 import { useState } from 'react'
 import { Edit2, Archive, CheckCircle } from 'lucide-react'
 import Image from 'next/image'
-
-interface Product {
-    id: string
-    nome: string
-    preco: number
-    ativo: boolean
-    visivel_catalogo: boolean
-    categoria: string | null
-    estoque_status?: string
-    descricao: string | null
-    peso_kg: number | null
-    subtitulo: string | null
-    destaque: boolean
-    slug: string | null
-    anchor_price_cents?: number | null
-    preco_ancoragem?: number | null
-    sis_imagens_produto?: { url: string }[] | null
-}
+import type { AdminProduct } from '@/types/product'
 
 interface ProductCardProps {
-    product: Product
+    product: AdminProduct
     onToggleActive: (id: string, currentStatus: boolean) => Promise<void>
-    onEdit: (product: Product) => void
+    onEdit: (product: AdminProduct) => void
 }
 
 export default function ProductCard({ product, onToggleActive, onEdit }: ProductCardProps) {

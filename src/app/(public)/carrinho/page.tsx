@@ -137,13 +137,9 @@ export default function CarrinhoPage() {
                 payment_method: data.payment_method,
                 items: items.map(item => ({
                     product_id: item.product.id,
-                    product_name: item.product.name,
                     quantity: item.quantity,
-                    unit_price_cents: item.product.price_cents,
                 })),
-                subtotal_cents: subtotalCents,
                 delivery_fee_cents: deliveryFeeCents,
-                total_cents: totalCents,
                 referred_by: data.referred_by,
                 notes: data.notes,
             }

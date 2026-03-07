@@ -3,30 +3,15 @@
 
 import { useState, useEffect } from 'react'
 import { Search } from 'lucide-react'
-import ProductCard from '../../../../components/admin/ProductCard'
-import ProductEditForm from '../../../../components/admin/ProductEditForm'
-
-interface Product {
-    id: string
-    nome: string
-    preco: number
-    ativo: boolean
-    visivel_catalogo: boolean
-    categoria: string | null
-    descricao: string | null
-    peso_kg: number | null
-    subtitulo: string | null
-    destaque: boolean
-    slug: string | null
-    preco_ancoragem?: number | null
-    sis_imagens_produto?: { url: string }[] | null
-}
+import ProductCard from '@/components/admin/ProductCard'
+import ProductEditForm from '@/components/admin/ProductEditForm'
+import type { AdminProduct } from '@/types/product'
 
 export default function AdminProductsPage() {
-    const [products, setProducts] = useState<Product[]>([])
+    const [products, setProducts] = useState<AdminProduct[]>([])
     const [loading, setLoading] = useState(true)
     const [searchTerm, setSearchTerm] = useState('')
-    const [editingProduct, setEditingProduct] = useState<Product | null>(null)
+    const [editingProduct, setEditingProduct] = useState<AdminProduct | null>(null)
 
     useEffect(() => {
         fetchProducts()
@@ -76,7 +61,7 @@ export default function AdminProductsPage() {
         }
     }
 
-    const handleUpdateProduct = async (id: string, data: Partial<Product>) => {
+    const handleUpdateProduct = async (id: string, data: Partial<AdminProduct>) => {
         try {
             const res = await fetch(`/api/admin/produtos/${id}`, {
                 method: 'PATCH',
@@ -150,6 +135,11 @@ export default function AdminProductsPage() {
                     product={editingProduct}
                     onClose={() => setEditingProduct(null)}
                     onSave={handleUpdateProduct}
+                    onImageDeleted={(id) => {
+                        setProducts(products.map(p =>
+                            p.id === id ? { ...p, sis_imagens_produto: [] } : p
+                        ))
+                    }}
                 />
             )}
         </div>

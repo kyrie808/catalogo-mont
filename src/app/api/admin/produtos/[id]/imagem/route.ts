@@ -3,24 +3,10 @@ import { createClient } from '@supabase/supabase-js'
 import { NextResponse } from 'next/server'
 import { cookies } from 'next/headers'
 import { createServerClient } from '@supabase/ssr'
-import { z } from 'zod'
-
-// Validation Schema
-const updateProductSchema = z.object({
-    ativo: z.boolean().optional(),
-    visivel_catalogo: z.boolean().optional(),
-    descricao: z.string().nullable().optional(),
-    categoria: z.string().nullable().optional(),
-    peso_kg: z.number().nullable().optional(),
-    subtitulo: z.string().nullable().optional(),
-    destaque: z.boolean().optional(),
-    slug: z.string().nullable().optional(),
-    instrucoes_preparo: z.string().nullable().optional()
-})
 
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
-export async function PATCH(
+export async function DELETE(
     request: Request,
     { params }: { params: { id: string } }
 ) {
@@ -55,30 +41,37 @@ export async function PATCH(
         return NextResponse.json({ error: 'Acesso não autorizado' }, { status: 403 })
     }
 
-    // 2. Parse & Validate Body
+    // 2. Parse body for image URL
     const body = await request.json()
-    const result = updateProductSchema.safeParse(body)
+    const imageUrl = body?.imageUrl as string
 
-    if (!result.success) {
-        return NextResponse.json({ error: 'Dados inválidos' }, { status: 400 })
+    if (!imageUrl) {
+        return NextResponse.json({ error: 'imageUrl é obrigatório' }, { status: 400 })
     }
 
-    // 3. Update Data (Service Role)
+    // 3. Delete via Service Role
     const supabase = createClient(
         process.env.NEXT_PUBLIC_SUPABASE_URL!,
         process.env.SUPABASE_SERVICE_ROLE_KEY!
     )
 
-    const { data, error } = await supabase
-        .from('produtos')
-        .update(result.data)
-        .eq('id', params.id)
-        .select()
-        .single()
+    // Remove das tabelas via RPC
+    const { error: rpcError } = await supabase
+        .rpc('delete_image_reference', { p_produto_id: params.id })
 
-    if (error) {
-        return NextResponse.json({ error: error.message }, { status: 500 })
+    if (rpcError) {
+        return NextResponse.json({ error: rpcError.message }, { status: 500 })
     }
 
-    return NextResponse.json(data)
+    // Deleta arquivo do bucket
+    const fileName = imageUrl.split('/').pop()
+    if (fileName) {
+        const { error: storageError } = await supabase
+            .storage.from('products').remove([fileName])
+        if (storageError) {
+            console.warn('[DeleteImage] Storage error:', storageError)
+        }
+    }
+
+    return NextResponse.json({ success: true })
 }
