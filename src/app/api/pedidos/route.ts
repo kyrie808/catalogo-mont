@@ -78,135 +78,34 @@ export async function POST(request: Request) {
         const delivery_fee_cents = validatedData.delivery_fee_cents ?? 0
         const total_cents = subtotal_cents + delivery_fee_cents
 
-        // Tenta inserir pedido (Tabelas Reais)
-        try {
-            console.log('Iniciando inserção do pedido no banco de dados...')
-
-            // 1. Inserir em cat_pedidos
-            const { data: pedido, error: pedidoError } = await supabaseAdmin
-                .from('cat_pedidos')
-                .insert({
-                    nome_cliente: validatedData.customer_name,
-                    telefone_cliente: validatedData.customer_phone,
-                    endereco_entrega: validatedData.customer_address || null,
-                    metodo_entrega: validatedData.delivery_method,
-                    subtotal_centavos: subtotal_cents,
-                    frete_centavos: delivery_fee_cents,
-                    total_centavos: total_cents,
-                    metodo_pagamento: validatedData.payment_method,
-                    observacoes: validatedData.notes || null,
-                    indicado_por: validatedData.referred_by || null,
-                    status: 'pendente',
-                    status_pagamento: 'pendente'
-                })
-                .select()
-                .single()
-
-            if (pedidoError) {
-                console.error('Erro ao inserir pedido em cat_pedidos:', pedidoError)
-                throw pedidoError
-            }
-
-            console.log('Pedido criado com sucesso:', pedido.id)
-
-            // 2. Inserir em cat_itens_pedido
-            const itensPedido = itemsComPreco.map(item => ({
-                pedido_id: pedido.id,
-                produto_id: item.product_id,
-                nome_produto: item.product_name,
-                quantidade: item.quantity,
-                preco_unitario_centavos: item.unit_price_cents,
-                total_centavos: item.total_centavos,
-            }))
-
-            const { error: itensError } = await supabaseAdmin
-                .from('cat_itens_pedido')
-                .insert(itensPedido)
-
-            if (itensError) {
-                console.error('Erro ao inserir itens em cat_itens_pedido:', itensError)
-                // Idealmente faria rollback, mas Supabase via API não tem transação simples aqui.
-                // Vamos apenas logar por enquanto.
-                throw itensError
-            }
-
-            // --- INÍCIO DA SINCRONIZAÇÃO COM VENDAS ---
-            try {
-                // 1. Get or create contato pelo telefone
-                let contatoId: string | null = null
-
-                const { data: contatoExistente, error: contatoError } = await supabaseAdmin
-                    .from('contatos')
-                    .select('id')
-                    .eq('telefone', validatedData.customer_phone)
-                    .maybeSingle()
-
-                if (contatoExistente) {
-                    contatoId = contatoExistente.id
-                } else {
-                    const { data: novoContato, error: contatoCreateError } = await supabaseAdmin
-                        .from('contatos')
-                        .insert({
-                            nome: validatedData.customer_name,
-                            telefone: validatedData.customer_phone,
-                            tipo: 'catalogo',
-                            origem: 'catalogo',
-                            status: 'cliente'
-                        })
-                        .select('id')
-                        .single()
-
-                    if (!contatoCreateError && novoContato) {
-                        contatoId = novoContato.id
-                    } else {
-                        console.error('SYNC: Erro ao criar contato:', contatoCreateError)
-                    }
-                }
-
-                // 2. Inserir em vendas
-                const { error: vendaError } = await supabaseAdmin
-                    .from('vendas')
-                    .insert({
-                        origem: 'catalogo',
-                        status: 'pendente',
-                        total: total_cents / 100,
-                        forma_pagamento: validatedData.payment_method,
-                        pago: false,
-                        valor_pago: 0,
-                        taxa_entrega: delivery_fee_cents / 100,
-                        observacoes: validatedData.notes || null,
-                        cat_pedido_id: pedido.id,
-                        data: new Date().toISOString().split('T')[0],
-                        contato_id: contatoId,
-                    })
-
-                if (vendaError) {
-                    console.error('SYNC: Erro ao sincronizar com vendas:', vendaError)
-                } else {
-                    console.log('SYNC: Pedido sincronizado com vendas com sucesso')
-                }
-            } catch (syncError) {
-                console.error('SYNC: Falha crítica na sincronização:', syncError)
-                // Não interrompemos o retorno do pedido se a sincronização falhar
-            }
-            // --- FIM DA SINCRONIZAÇÃO ---
-
-            return NextResponse.json({
-                pedido_id: pedido.id,
-                numero_pedido: pedido.numero_pedido,
-                status: 'pendente',
-                message: 'Pedido criado com sucesso'
+        // Inserir pedido + itens via RPC (transação atômica)
+        const { data: pedidoCriado, error: rpcError } = await supabaseAdmin
+            .rpc('criar_pedido', {
+                p_nome_cliente: validatedData.customer_name,
+                p_telefone_cliente: validatedData.customer_phone,
+                p_endereco_entrega: validatedData.customer_address || null,
+                p_metodo_entrega: validatedData.delivery_method,
+                p_metodo_pagamento: validatedData.payment_method,
+                p_subtotal_centavos: subtotal_cents,
+                p_frete_centavos: delivery_fee_cents,
+                p_total_centavos: total_cents,
+                p_observacoes: validatedData.notes || null,
+                p_indicado_por: validatedData.referred_by || null,
+                p_itens: itemsComPreco,
             })
 
-        } catch (dbError) {
-            console.error('Erro crítico no banco de dados:', dbError)
-
-            // Retorna erro 500 real, sem fallback
+        if (rpcError) {
+            console.error('Erro ao criar pedido:', rpcError)
             return NextResponse.json(
-                { error: 'Erro ao salvar pedido no banco de dados' },
+                { error: 'Erro ao criar pedido' },
                 { status: 500 }
             )
         }
+
+        return NextResponse.json(
+            { success: true, pedido: pedidoCriado },
+            { status: 201 }
+        )
 
     } catch (error) {
         if (error instanceof z.ZodError) {
