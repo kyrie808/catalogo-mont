@@ -20,7 +20,8 @@
       "Bash(curl:*)",
       "Bash(npx tsc:*)",
       "Bash(xargs wc:*)",
-      "Bash(npm uninstall:*)"
+      "Bash(npm uninstall:*)",
+      "Bash(wc:*)"
     ]
   },
   "enableAllProjectMcpServers": true,
