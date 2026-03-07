@@ -36,15 +36,24 @@ export async function middleware(request: NextRequest) {
         data: { user },
     } = await supabase.auth.getUser();
 
-    if (request.nextUrl.pathname.startsWith("/admin")) {
-        // Allow access to login page
-        if (request.nextUrl.pathname === "/admin/login") {
-            return response;
-        }
+    const isAdminPage = request.nextUrl.pathname.startsWith("/admin");
+    const isAdminApi = request.nextUrl.pathname.startsWith("/api/admin");
 
-        // Protect other admin routes
+    if (isAdminPage || isAdminApi) {
         if (!user) {
-            return NextResponse.redirect(new URL("/admin/login", request.url));
+            // API routes retornam 401, páginas redirecionam
+            if (isAdminApi) {
+                return NextResponse.json(
+                    { error: 'Não autorizado' },
+                    { status: 401 }
+                );
+            }
+            // Exclui login do redirecionamento
+            if (!request.nextUrl.pathname.startsWith("/admin/login")) {
+                return NextResponse.redirect(
+                    new URL("/admin/login", request.url)
+                );
+            }
         }
     }
 
@@ -52,14 +61,5 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-    matcher: [
-        /*
-         * Match all request paths except for the ones starting with:
-         * - _next/static (static files)
-         * - _next/image (image optimization files)
-         * - favicon.ico (favicon file)
-         * - public folder
-         */
-        "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
-    ],
+    matcher: ["/admin/:path*", "/api/admin/:path*"],
 };
