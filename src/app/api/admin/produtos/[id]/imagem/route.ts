@@ -41,31 +41,92 @@ export async function DELETE(
         return NextResponse.json({ error: 'Acesso não autorizado' }, { status: 403 })
     }
 
-    // 2. Parse body for image URL
+    // 2. Parse body + validar imageUrl
     const body = await request.json()
-    const imageUrl = body?.imageUrl as string
+    const imageUrl = body?.imageUrl
 
-    if (!imageUrl) {
-        return NextResponse.json({ error: 'imageUrl é obrigatório' }, { status: 400 })
+    if (!imageUrl || typeof imageUrl !== 'string') {
+        return NextResponse.json(
+            { error: 'imageUrl ausente' }, { status: 400 }
+        )
     }
 
-    // 3. Delete via Service Role
-    // Remove das tabelas via RPC
-    const { error: rpcError } = await supabaseAdmin
-        .rpc('delete_image_reference', { p_produto_id: params.id })
-
-    if (rpcError) {
-        return NextResponse.json({ error: rpcError.message }, { status: 500 })
+    let parsedUrl: URL
+    try {
+        parsedUrl = new URL(imageUrl)
+    } catch {
+        return NextResponse.json(
+            { error: 'imageUrl inválida' }, { status: 400 }
+        )
     }
 
-    // Deleta arquivo do bucket
-    const fileName = imageUrl.split('/').pop()
-    if (fileName) {
-        const { error: storageError } = await supabaseAdmin
-            .storage.from('products').remove([fileName])
-        if (storageError) {
-            console.warn('[DeleteImage] Storage error:', storageError)
-        }
+    const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!
+    if (!parsedUrl.origin.includes(new URL(SUPABASE_URL).hostname)) {
+        return NextResponse.json(
+            { error: 'imageUrl não pertence ao Supabase' },
+            { status: 400 }
+        )
+    }
+
+    // 3. Verificar ownership — imagem pertence ao produto
+    const { data: imagemExiste, error: checkError } =
+        await supabaseAdmin
+            .from('sis_imagens_produto')
+            .select('id')
+            .eq('produto_id', params.id)
+            .eq('url', imageUrl)
+            .single()
+
+    if (checkError || !imagemExiste) {
+        return NextResponse.json(
+            { error: 'Imagem não pertence a este produto' },
+            { status: 403 }
+        )
+    }
+
+    // 4. Extrair filePath com new URL()
+    const pathSegments = parsedUrl.pathname.split('/')
+    const bucketIndex = pathSegments.findIndex(
+        s => s === 'object' || s === 'public'
+    )
+    const filePath = bucketIndex !== -1
+        ? pathSegments.slice(bucketIndex + 2).join('/')
+        : pathSegments.pop() ?? ''
+
+    if (!filePath) {
+        return NextResponse.json(
+            { error: 'Não foi possível extrair o path do arquivo' },
+            { status: 400 }
+        )
+    }
+
+    // 5. Deleta do Storage primeiro
+    const { error: storageError } = await supabaseAdmin
+        .storage
+        .from('products')
+        .remove([filePath])
+
+    if (storageError) {
+        console.error('Erro ao deletar do storage:', storageError)
+        return NextResponse.json(
+            { error: 'Erro ao deletar arquivo do storage' },
+            { status: 500 }
+        )
+    }
+
+    // 6. Só então remove referência do banco
+    const { error: dbError } = await supabaseAdmin
+        .rpc('delete_image_reference', {
+            p_produto_id: params.id,
+            p_image_url: imageUrl
+        })
+
+    if (dbError) {
+        console.error('Erro ao remover referência do banco:', dbError)
+        return NextResponse.json(
+            { error: 'Arquivo deletado mas erro ao atualizar banco' },
+            { status: 500 }
+        )
     }
 
     return NextResponse.json({ success: true })
