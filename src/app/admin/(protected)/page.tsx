@@ -1,5 +1,5 @@
 
-import { createServerClient } from "@supabase/ssr";
+import { createServerClient, type CookieOptions } from "@supabase/ssr";
 import { cookies } from "next/headers";
 import { DollarSign, ShoppingBag, Package, AlertTriangle } from "lucide-react";
 import DashboardCard from "../../../components/admin/DashboardCard";
@@ -16,7 +16,7 @@ export default async function AdminDashboard() {
                 getAll() {
                     return cookieStore.getAll();
                 },
-                setAll(cookiesToSet: { name: string; value: string; options?: any }[]) {
+                setAll(cookiesToSet: { name: string; value: string; options?: CookieOptions }[]) {
                     try {
                         cookiesToSet.forEach(({ name, value, options }) =>
                             cookieStore.set(name, value, options)

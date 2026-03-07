@@ -10,13 +10,13 @@ interface ScrollAnimationOptions {
     stagger?: number
 }
 
-export function useScrollAnimation({
+export function useScrollAnimation<T extends HTMLElement = HTMLElement>({
     y = 50,
     duration = 0.8,
     delay = 0,
     start = 'top 85%',
 }: ScrollAnimationOptions = {}) {
-    const elementRef = useRef<any>(null)
+    const elementRef = useRef<T>(null)
 
     useLayoutEffect(() => {
         gsap.registerPlugin(ScrollTrigger)

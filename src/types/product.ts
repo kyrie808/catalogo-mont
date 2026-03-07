@@ -49,7 +49,7 @@ export interface Product {
     updated_at: string
     image_url?: string | null // Deprecated: use primary_image_url
     primary_image_url: string | null
-    images: any[] | null
+    images: ProductImage[] | null
     stock_status: string
     instrucoes_preparo?: string | null
 }

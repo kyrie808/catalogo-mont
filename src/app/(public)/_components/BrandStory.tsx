@@ -13,9 +13,9 @@ export default function BrandStory() {
 
     const P3 = "Hoje atendemos toda a regi\u00E3o do ABC \u2014\nsem conservantes, sem atalhos, sem substituir\no que faz a diferen\u00E7a."
 
-    const p1Ref = useScrollAnimation({ delay: 0.1 })
-    const p2Ref = useScrollAnimation({ delay: 0.2 })
-    const p3Ref = useScrollAnimation({ delay: 0.3 })
+    const p1Ref = useScrollAnimation<HTMLParagraphElement>({ delay: 0.1 })
+    const p2Ref = useScrollAnimation<HTMLParagraphElement>({ delay: 0.2 })
+    const p3Ref = useScrollAnimation<HTMLParagraphElement>({ delay: 0.3 })
     const breadRef = useRef(null)
 
     return (

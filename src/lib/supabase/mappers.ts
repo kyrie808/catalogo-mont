@@ -1,9 +1,9 @@
-import type { Product } from '@/types/product'
+import type { Product, ProductImage } from '@/types/product'
 
 /**
  * Schema real do banco (tabela produtos + view vw_catalogo_produtos)
  */
-interface ProdutoDatabase {
+export interface ProdutoDatabase {
     id: string
     nome: string
     codigo: string
@@ -20,7 +20,7 @@ interface ProdutoDatabase {
     is_featured: boolean // Vem da view
     stock_status: string // Vem da view
     primary_image_url: string | null // Vem da view
-    images: any[] | null // Vem da view (json)
+    images: ProductImage[] | null // Vem da view (json)
     instrucoes_preparo?: string | null // Vem da view
     criado_em?: string
     atualizado_em?: string

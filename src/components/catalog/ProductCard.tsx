@@ -6,6 +6,7 @@ import Image from 'next/image'
 import { cn } from '@/lib/utils/cn'
 import { productCardHover } from '@/lib/gsap/animations'
 import { useCartStore } from '@/lib/cart/store'
+import type { Product } from '@/types/product'
 import { Badge } from '@/components/ui'
 import gsap from 'gsap'
 
@@ -62,25 +63,34 @@ export function ProductCard({
             )
         }
 
-        // Reconstruct product object for the store
-        // Note: we're passing minimal info required for the cart
-        addItem({
+        const product: Product = {
             id,
             name,
             slug,
             category,
             subtitle,
             price_cents,
-            primary_image_url: image_url,
-            is_featured
-        } as any, 1)
+            primary_image_url: image_url ?? null,
+            is_featured: is_featured ?? false,
+            description: null,
+            cost_cents: null,
+            stock_quantity: 0,
+            stock_min_alert: 0,
+            is_active: true,
+            sort_order: 0,
+            created_at: '',
+            updated_at: '',
+            images: null,
+            stock_status: 'em_estoque',
+        }
+        addItem(product, 1)
     }
 
-    const Wrapper = slug ? Link : 'div'
+    const Wrapper: React.ElementType = slug ? Link : 'div'
     const wrapperProps = slug ? { href: `/produtos/${slug}`, className: 'block' } : { className: 'block' }
 
     return (
-        <Wrapper {...wrapperProps as any}>
+        <Wrapper {...wrapperProps}>
             <div
                 ref={cardRef}
                 className={cn(

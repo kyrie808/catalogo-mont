@@ -21,7 +21,7 @@ export default function FloatingPaes() {
     useLayoutEffect(() => {
         // Idle Animation (Flutuando) - Independente do Scroll
         const ctx = gsap.context(() => {
-            gsap.utils.toArray('.floating-pao').forEach((pao: any, i) => {
+            gsap.utils.toArray<Element>('.floating-pao').forEach((pao, i) => {
                 gsap.to(pao, {
                     y: `+=${15 + i * 5}`,
                     rotation: i % 2 === 0 ? 10 : -10,

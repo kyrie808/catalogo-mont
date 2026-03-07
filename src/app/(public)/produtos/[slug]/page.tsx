@@ -1,7 +1,7 @@
 import { Navbar, Footer } from '@/components/catalog'
 import Image from 'next/image'
 import { createClient } from '@/lib/supabase/server'
-import { mapProdutoToProduct, MOCK_PRODUCTS } from '@/lib/supabase/mappers'
+import { mapProdutoToProduct, MOCK_PRODUCTS, type ProdutoDatabase } from '@/lib/supabase/mappers'
 import { formatCurrency } from '@/lib/utils/format'
 import { Badge } from '@/components/ui'
 import type { Product } from '@/types/product'
@@ -27,7 +27,7 @@ async function getProduct(slug: string): Promise<Product | null> {
             return mockProduct || null
         }
 
-        return mapProdutoToProduct(data as any)
+        return mapProdutoToProduct(data as ProdutoDatabase)
 
     } catch (error) {
         console.error('Erro ao buscar produto:', error)

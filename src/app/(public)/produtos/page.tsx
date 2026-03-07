@@ -1,6 +1,6 @@
 import { Navbar, Footer } from '@/components/catalog'
 import { createClient } from '@/lib/supabase/server'
-import { mapProdutoToProduct, MOCK_PRODUCTS } from '@/lib/supabase/mappers'
+import { mapProdutoToProduct, MOCK_PRODUCTS, type ProdutoDatabase } from '@/lib/supabase/mappers'
 import type { Product } from '@/types/product'
 import ProductCatalog from './_components/ProductCatalog'
 import FeaturedProduct from './_components/FeaturedProduct'
@@ -28,7 +28,7 @@ async function getAllProducts(): Promise<Product[]> {
             return MOCK_PRODUCTS
         }
 
-        return data.map(p => mapProdutoToProduct(p as any))
+        return data.map(p => mapProdutoToProduct(p as ProdutoDatabase))
 
     } catch (error) {
         console.error('Erro ao buscar produtos:', error)
