@@ -22,7 +22,9 @@
       "Bash(xargs wc:*)",
       "Bash(npm uninstall:*)",
       "Bash(wc:*)",
-      "Bash(npm run:*)"
+      "Bash(npm run:*)",
+      "mcp__supabase-distribuidora__list_tables",
+      "Bash(node -e \":*)"
     ]
   },
   "enableAllProjectMcpServers": true,

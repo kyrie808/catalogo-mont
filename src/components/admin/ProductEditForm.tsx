@@ -29,7 +29,16 @@ export default function ProductEditForm({ product, onClose, onSave, onImageDelet
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
         setLoading(true)
-        await onSave(product.id, formData)
+        const cleanPayload = {
+            ...formData,
+            descricao: formData.descricao || null,
+            peso_kg: formData.peso_kg != null && !isNaN(Number(formData.peso_kg))
+                ? Number(formData.peso_kg)
+                : null,
+            slug: formData.slug || null,
+            instrucoes_preparo: formData.instrucoes_preparo || null,
+        }
+        await onSave(product.id, cleanPayload)
         setLoading(false)
         onClose()
     }

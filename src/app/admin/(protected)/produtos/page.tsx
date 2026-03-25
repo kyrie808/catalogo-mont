@@ -66,6 +66,7 @@ export default function AdminProductsPage() {
 
     const handleUpdateProduct = async (id: string, data: Partial<AdminProduct>) => {
         try {
+            console.log('[PATCH] payload:', JSON.stringify(data))
             const res = await fetch(`/api/admin/produtos/${id}`, {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json' },
@@ -77,6 +78,8 @@ export default function AdminProductsPage() {
                 setProducts(products.map(p => p.id === id ? updated : p))
                 setEditingProduct(null)
             } else {
+                const errBody = await res.json().catch(() => null)
+                console.error('[PATCH] error response:', res.status, errBody)
                 showToast('Erro ao salvar alterações')
             }
         } catch (error) {

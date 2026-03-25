@@ -15,7 +15,7 @@ const updateProductSchema = z.object({
     subtitulo: z.string().nullable().optional(),
     destaque: z.boolean().optional(),
     slug: z.string()
-        .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, 'Slug deve conter apenas letras minúsculas, números e hífens')
+        .regex(/^[a-z0-9_-]+$/, 'Slug deve conter apenas letras minúsculas, números, hífens e underscores')
         .nullable().optional(),
     instrucoes_preparo: z.string().nullable().optional()
 })
@@ -62,7 +62,9 @@ export async function PATCH(
     const result = updateProductSchema.safeParse(body)
 
     if (!result.success) {
-        return NextResponse.json({ error: 'Dados inválidos' }, { status: 400 })
+        console.error('ZOD_VALIDATION_ERROR:', JSON.stringify(result.error.issues, null, 2))
+        console.error('ZOD_RAW_BODY:', JSON.stringify(body))
+        return NextResponse.json({ error: 'Dados inválidos', details: result.error.issues }, { status: 400 })
     }
 
     // 3. Update Data (Service Role)
