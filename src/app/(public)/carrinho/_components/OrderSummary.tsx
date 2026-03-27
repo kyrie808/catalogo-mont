@@ -19,10 +19,7 @@ export default function OrderSummary({ subtotal, frete, total, deliveryMethod, f
             {deliveryMethod === 'entrega' && (
                 <div className="flex justify-between text-mont-gray">
                     <span>Entrega</span>
-                    {frete === 0
-                        ? <span className="text-green-600 font-medium">Grátis</span>
-                        : <span>{formatCurrency(frete)}</span>
-                    }
+                    <span>A combinar</span>
                 </div>
             )}
 
