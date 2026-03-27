@@ -34,7 +34,8 @@
       "Bash(grep -r \"brinde\\\\|forma_pagamento\\\\|payment_status\\\\|pago\\\\|fiado\" --include=*.tsx --include=*.ts --include=*.sql .)",
       "Bash(grep -r \"brinde\\\\|gift\" --include=*.ts --include=*.tsx --include=*.sql .)",
       "Bash(grep -rn \"pago\\\\|fiado\\\\|parcial\\\\|!pago\\\\|= false\\\\|== false\" --include=*.ts --include=*.tsx src/ lib/ app/)",
-      "Bash(grep -rn \"vw_admin_dashboard\\\\|faturamento\\\\|pendente\" --include=*.ts --include=*.tsx --include=*.sql .)"
+      "Bash(grep -rn \"vw_admin_dashboard\\\\|faturamento\\\\|pendente\" --include=*.ts --include=*.tsx --include=*.sql .)",
+      "Bash(grep:*)"
     ]
   },
   "enableAllProjectMcpServers": true,
